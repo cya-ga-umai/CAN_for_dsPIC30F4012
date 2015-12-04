@@ -22,11 +22,13 @@ unsigned char CAN1RX1Flag = 0;
 static void CAN1_send_buffer_8(unsigned char buffer_no, unsigned char *data, unsigned char datalen);
 static void CAN1_send_buffer_16(unsigned char buffer_no, unsigned int *data, unsigned char datalen);
 static void CAN1_send_buffer_32(unsigned char buffer_no, unsigned long *data, unsigned char datalen);
+static void CAN1_send_id(unsigned char buffer_no, unsigned char id_type, unsigned char msg_type, 
+        unsigned char priority, unsigned int sid, unsigned long eid, unsigned char datalen);
 
 static void CAN1_read_buffer_8(unsigned char buffer_no, unsigned char *data);
 static void CAN1_read_buffer_16(unsigned char buffer_no, unsigned int *data);
 static void CAN1_read_buffer_32(unsigned char buffer_no, unsigned long *data);
-
+static void CAN1_read_flag(unsigned char buffer_no);
 /******************************************************************************
  * CAN1モジュール初期化関数
  ******************************************************************************/
@@ -127,193 +129,19 @@ void CAN1_set_filter(unsigned char filter_no, unsigned char id_type, unsigned in
 void CAN1_send_message_8(unsigned char buffer_no, unsigned char id_type, unsigned char msg_type, 
         unsigned char priority, unsigned int sid, unsigned long eid, unsigned char *data, unsigned char datalen){
     CAN1_send_buffer_8(buffer_no, data, datalen);
-    switch (buffer_no){
-        default:
-            C1TX0CONbits.TXPRI              = priority;     /* メッセージの優先順位 */
-            C1TX0SIDbits.TXIDE              = id_type;      /* EID使用か */
-            
-            C1TX0SIDbits.SRR                = msg_type;     /* 標準かリモートか */
-            if (id_type) C1TX0DLCbits.TXRTR = msg_type;     /* EIDが有効ならばTXRTRも有効 */
-            
-            C1TX0SIDbits.SID10_6            = sid >> 6;
-            C1TX0SIDbits.SID5_0             = sid & 0x3F;
-            
-            C1TX0EIDbits.EID17_14           = eid >> 14;
-            C1TX0EIDbits.EID13_6            = (eid >> 6) & 0xFF;
-            C1TX0DLCbits.EID5_0             = eid & 0x3F;
-            
-            C1TX0DLCbits.DLC                = datalen;      /* データバイト数 */   
-            C1TX0DLCbits.TXRB0 = C1TX0DLCbits.TXRB1 = 1;    /* プロトコル上1にセットする必要あり */
-            C1TX0CONbits.TXREQ              = 1;            /* 送信要求 */
-            
-            break;
-        case 1:
-            C1TX1CONbits.TXPRI              = priority;
-            C1TX1SIDbits.TXIDE              = id_type;
-            
-            C1TX1SIDbits.SRR                = msg_type;
-            if (id_type) C1TX1DLCbits.TXRTR = msg_type;
-            
-            C1TX1SIDbits.SID10_6            = sid >> 6;
-            C1TX1SIDbits.SID5_0             = sid & 0x3F;
-            
-            C1TX1EIDbits.EID17_14           = eid >> 14;
-            C1TX1EIDbits.EID13_6            = (eid >> 6) & 0xFF;
-            C1TX1DLCbits.EID5_0             = eid & 0x3F;
-            
-            C1TX1DLCbits.DLC                = datalen;
-            C1TX1DLCbits.TXRB0 = C1TX1DLCbits.TXRB1 = 1;
-            C1TX1CONbits.TXREQ              = 1;
-            
-            break;
-        case 2:
-            C1TX2CONbits.TXPRI              = priority;
-            C1TX2SIDbits.TXIDE              = id_type;
-            
-            C1TX2SIDbits.SRR                = msg_type;
-            if (id_type) C1TX2DLCbits.TXRTR = msg_type;
-            
-            C1TX2SIDbits.SID10_6            = sid >> 6;
-            C1TX2SIDbits.SID5_0             = sid & 0x3F;
-            
-            C1TX2EIDbits.EID17_14           = eid >> 14;
-            C1TX2EIDbits.EID13_6            = (eid >> 6) & 0xFF;
-            C1TX2DLCbits.EID5_0             = eid & 0x3F;
-            
-            C1TX2DLCbits.DLC                = datalen;
-            C1TX2DLCbits.TXRB0 = C1TX2DLCbits.TXRB1 = 1;
-            C1TX2CONbits.TXREQ              = 1;
-            
-            break;
-    }
+    CAN1_send_id(buffer_no, id_type, msg_type, priority, sid, eid, datalen);
 }
 
 void CAN1_send_message_16(unsigned char buffer_no, unsigned char id_type, unsigned char msg_type, 
         unsigned char priority, unsigned int sid, unsigned long eid, unsigned int *data, unsigned char datalen){
     CAN1_send_buffer_16(buffer_no, data, datalen);
-    switch (buffer_no){
-        default:
-            C1TX0CONbits.TXPRI              = priority;     /* メッセージの優先順位 */
-            C1TX0SIDbits.TXIDE              = id_type;      /* EID使用か */
-            
-            C1TX0SIDbits.SRR                = msg_type;     /* 標準かリモートか */
-            if (id_type) C1TX0DLCbits.TXRTR = msg_type;     /* EIDが有効ならばTXRTRも有効 */
-            
-            C1TX0SIDbits.SID10_6            = sid >> 6;
-            C1TX0SIDbits.SID5_0             = sid & 0x3F;
-            
-            C1TX0EIDbits.EID17_14           = eid >> 14;
-            C1TX0EIDbits.EID13_6            = (eid >> 6) & 0xFF;
-            C1TX0DLCbits.EID5_0             = eid & 0x3F;
-            
-            C1TX0DLCbits.DLC                = datalen;      /* データバイト数 */   
-            C1TX0DLCbits.TXRB0 = C1TX0DLCbits.TXRB1 = 1;    /* プロトコル上1にセットする必要あり */
-            C1TX0CONbits.TXREQ              = 1;            /* 送信要求 */
-            
-            break;
-        case 1:
-            C1TX1CONbits.TXPRI              = priority;
-            C1TX1SIDbits.TXIDE              = id_type;
-            
-            C1TX1SIDbits.SRR                = msg_type;
-            if (id_type) C1TX1DLCbits.TXRTR = msg_type;
-            
-            C1TX1SIDbits.SID10_6            = sid >> 6;
-            C1TX1SIDbits.SID5_0             = sid & 0x3F;
-            
-            C1TX1EIDbits.EID17_14           = eid >> 14;
-            C1TX1EIDbits.EID13_6            = (eid >> 6) & 0xFF;
-            C1TX1DLCbits.EID5_0             = eid & 0x3F;
-            
-            C1TX1DLCbits.DLC                = datalen;
-            C1TX1DLCbits.TXRB0 = C1TX1DLCbits.TXRB1 = 1;
-            C1TX1CONbits.TXREQ              = 1;
-            
-            break;
-        case 2:
-            C1TX2CONbits.TXPRI              = priority;
-            C1TX2SIDbits.TXIDE              = id_type;
-            
-            C1TX2SIDbits.SRR                = msg_type;
-            if (id_type) C1TX2DLCbits.TXRTR = msg_type;
-            
-            C1TX2SIDbits.SID10_6            = sid >> 6;
-            C1TX2SIDbits.SID5_0             = sid & 0x3F;
-            
-            C1TX2EIDbits.EID17_14           = eid >> 14;
-            C1TX2EIDbits.EID13_6            = (eid >> 6) & 0xFF;
-            C1TX2DLCbits.EID5_0             = eid & 0x3F;
-            
-            C1TX2DLCbits.DLC                = datalen;
-            C1TX2DLCbits.TXRB0 = C1TX2DLCbits.TXRB1 = 1;
-            C1TX2CONbits.TXREQ              = 1;
-            
-            break;
-    }
+    CAN1_send_id(buffer_no, id_type, msg_type, priority, sid, eid, datalen);
 }
 
 void CAN1_send_message_32(unsigned char buffer_no, unsigned char id_type, unsigned char msg_type, 
         unsigned char priority, unsigned int sid, unsigned long eid, unsigned long *data, unsigned char datalen){
     CAN1_send_buffer_32(buffer_no, data, datalen);
-    switch (buffer_no){
-        default:
-            C1TX0CONbits.TXPRI              = priority;     /* メッセージの優先順位 */
-            C1TX0SIDbits.TXIDE              = id_type;      /* EID使用か */
-            
-            C1TX0SIDbits.SRR                = msg_type;     /* 標準かリモートか */
-            if (id_type) C1TX0DLCbits.TXRTR = msg_type;     /* EIDが有効ならばTXRTRも有効 */
-            
-            C1TX0SIDbits.SID10_6            = sid >> 6;
-            C1TX0SIDbits.SID5_0             = sid & 0x3F;
-            
-            C1TX0EIDbits.EID17_14           = eid >> 14;
-            C1TX0EIDbits.EID13_6            = (eid >> 6) & 0xFF;
-            C1TX0DLCbits.EID5_0             = eid & 0x3F;
-            
-            C1TX0DLCbits.DLC                = datalen;      /* データバイト数 */   
-            C1TX0DLCbits.TXRB0 = C1TX0DLCbits.TXRB1 = 1;    /* プロトコル上1にセットする必要あり */
-            C1TX0CONbits.TXREQ              = 1;            /* 送信要求 */
-            
-            break;
-        case 1:
-            C1TX1CONbits.TXPRI              = priority;
-            C1TX1SIDbits.TXIDE              = id_type;
-            
-            C1TX1SIDbits.SRR                = msg_type;
-            if (id_type) C1TX1DLCbits.TXRTR = msg_type;
-            
-            C1TX1SIDbits.SID10_6            = sid >> 6;
-            C1TX1SIDbits.SID5_0             = sid & 0x3F;
-            
-            C1TX1EIDbits.EID17_14           = eid >> 14;
-            C1TX1EIDbits.EID13_6            = (eid >> 6) & 0xFF;
-            C1TX1DLCbits.EID5_0             = eid & 0x3F;
-            
-            C1TX1DLCbits.DLC                = datalen;
-            C1TX1DLCbits.TXRB0 = C1TX1DLCbits.TXRB1 = 1;
-            C1TX1CONbits.TXREQ              = 1;
-            
-            break;
-        case 2:
-            C1TX2CONbits.TXPRI              = priority;
-            C1TX2SIDbits.TXIDE              = id_type;
-            
-            C1TX2SIDbits.SRR                = msg_type;
-            if (id_type) C1TX2DLCbits.TXRTR = msg_type;
-            
-            C1TX2SIDbits.SID10_6            = sid >> 6;
-            C1TX2SIDbits.SID5_0             = sid & 0x3F;
-            
-            C1TX2EIDbits.EID17_14           = eid >> 14;
-            C1TX2EIDbits.EID13_6            = (eid >> 6) & 0xFF;
-            C1TX2DLCbits.EID5_0             = eid & 0x3F;
-            
-            C1TX2DLCbits.DLC                = datalen;
-            C1TX2DLCbits.TXRB0 = C1TX2DLCbits.TXRB1 = 1;
-            C1TX2CONbits.TXREQ              = 1;
-            
-            break;
-    }
+    CAN1_send_id(buffer_no, id_type, msg_type, priority, sid, eid, datalen);
 }
 
 /******************************************************************************
@@ -497,63 +325,105 @@ static void CAN1_send_buffer_32(unsigned char buffer_no, unsigned long *data, un
 }
 
 /******************************************************************************
+ * CAN1モジュール送信バッファ設定関数（スタティック）
+ ******************************************************************************/
+static void CAN1_send_id(unsigned char buffer_no, unsigned char id_type, unsigned char msg_type, 
+        unsigned char priority, unsigned int sid, unsigned long eid, unsigned char datalen){
+    switch (buffer_no){
+        default:
+            C1TX0CONbits.TXPRI              = priority;     /* メッセージの優先順位 */
+            C1TX0SIDbits.TXIDE              = id_type;      /* EID使用か */
+            
+            C1TX0SIDbits.SRR                = msg_type;     /* 標準かリモートか */
+            if (id_type) C1TX0DLCbits.TXRTR = msg_type;     /* EIDが有効ならばTXRTRも有効 */
+            
+            C1TX0SIDbits.SID10_6            = sid >> 6;
+            C1TX0SIDbits.SID5_0             = sid & 0x3F;
+            
+            C1TX0EIDbits.EID17_14           = eid >> 14;
+            C1TX0EIDbits.EID13_6            = (eid >> 6) & 0xFF;
+            C1TX0DLCbits.EID5_0             = eid & 0x3F;
+            
+            C1TX0DLCbits.DLC                = datalen;      /* データバイト数 */   
+            C1TX0DLCbits.TXRB0 = C1TX0DLCbits.TXRB1 = 1;    /* プロトコル上1にセットする必要あり */
+            
+            while(1){
+                C1TX0CONbits.TXREQ          = 1;           /* 送信要求 */
+                while(C1TX0CONbits.TXREQ);                  /* 送信処理終了まで待つ */
+                if(!C1TX0CONbits.TXABT) break;              /* 送信成功したら終了 */
+            }
+            
+            break;
+        case 1:
+            C1TX1CONbits.TXPRI              = priority;
+            C1TX1SIDbits.TXIDE              = id_type;
+            
+            C1TX1SIDbits.SRR                = msg_type;
+            if (id_type) C1TX1DLCbits.TXRTR = msg_type;
+            
+            C1TX1SIDbits.SID10_6            = sid >> 6;
+            C1TX1SIDbits.SID5_0             = sid & 0x3F;
+            
+            C1TX1EIDbits.EID17_14           = eid >> 14;
+            C1TX1EIDbits.EID13_6            = (eid >> 6) & 0xFF;
+            C1TX1DLCbits.EID5_0             = eid & 0x3F;
+            
+            C1TX1DLCbits.DLC                = datalen;
+            C1TX1DLCbits.TXRB0 = C1TX1DLCbits.TXRB1 = 1;
+            
+            while(1){
+                C1TX1CONbits.TXREQ          = 1;
+                while(C1TX1CONbits.TXREQ);
+                if(!C1TX1CONbits.TXABT) break;
+            }
+            
+            break;
+        case 2:
+            C1TX2CONbits.TXPRI              = priority;
+            C1TX2SIDbits.TXIDE              = id_type;
+            
+            C1TX2SIDbits.SRR                = msg_type;
+            if (id_type) C1TX2DLCbits.TXRTR = msg_type;
+            
+            C1TX2SIDbits.SID10_6            = sid >> 6;
+            C1TX2SIDbits.SID5_0             = sid & 0x3F;
+            
+            C1TX2EIDbits.EID17_14           = eid >> 14;
+            C1TX2EIDbits.EID13_6            = (eid >> 6) & 0xFF;
+            C1TX2DLCbits.EID5_0             = eid & 0x3F;
+            
+            C1TX2DLCbits.DLC                = datalen;
+            C1TX2DLCbits.TXRB0 = C1TX2DLCbits.TXRB1 = 1;
+            
+            while(1){
+                C1TX2CONbits.TXREQ          = 1;
+                while(C1TX2CONbits.TXREQ);
+                if(!C1TX2CONbits.TXABT) break;
+            }
+            
+            break;
+    }
+}
+
+/******************************************************************************
  * CAN1モジュールメッセージ受信関数
  ******************************************************************************/
 void CAN1_read_message_8(unsigned char buffer_no, unsigned char *data){
-    switch (buffer_no){
-        default:
-            while(!CAN1RX0Flag);
-            CAN1_read_buffer_8(0, data);
-            C1INTFbits.RX0IF    = 0;
-            C1RX0CONbits.RXFUL  = 0;
-            CAN1RX0Flag         = 0;
-            break;
-        case 1:
-            while(!CAN1RX1Flag);
-            CAN1_read_buffer_8(1, data);
-            C1INTFbits.RX1IF    = 0;
-            C1RX1CONbits.RXFUL  = 0;
-            CAN1RX1Flag         = 0;
-            break;
-    }
+    while(!(CAN1RX0Flag || CAN1RX1Flag));
+    CAN1_read_buffer_8(buffer_no, data);
+    CAN1_read_flag(buffer_no);
 }
 
 void CAN1_read_message_16(unsigned char buffer_no, unsigned int *data){
-    switch (buffer_no){
-        default:
-            while(!CAN1RX0Flag);
-            CAN1_read_buffer_16(0, data);
-            C1INTFbits.RX0IF    = 0;
-            C1RX0CONbits.RXFUL  = 0;
-            CAN1RX0Flag         = 0;
-            break;
-        case 1:
-            while(!CAN1RX1Flag);
-            CAN1_read_buffer_16(1, data);
-            C1INTFbits.RX1IF    = 0;
-            C1RX1CONbits.RXFUL  = 0;
-            CAN1RX1Flag         = 0;
-            break;
-    }
+    while(!(CAN1RX0Flag || CAN1RX1Flag));
+    CAN1_read_buffer_16(buffer_no, data);
+    CAN1_read_flag(buffer_no);
 }
 
 void CAN1_read_message_32(unsigned char buffer_no, unsigned long *data){
-    switch (buffer_no){
-        default:
-            while(!CAN1RX0Flag);
-            CAN1_read_buffer_32(0, data);
-            C1INTFbits.RX0IF    = 0;
-            C1RX0CONbits.RXFUL  = 0;
-            CAN1RX0Flag         = 0;
-            break;
-        case 1:
-            while(!CAN1RX1Flag);
-            CAN1_read_buffer_32(1, data);
-            C1INTFbits.RX1IF    = 0;
-            C1RX1CONbits.RXFUL  = 0;
-            CAN1RX1Flag         = 0;
-            break;
-    }
+    while(!(CAN1RX0Flag || CAN1RX1Flag));
+    CAN1_read_buffer_32(buffer_no, data);
+    CAN1_read_flag(buffer_no);
 }
 
 /******************************************************************************
@@ -674,6 +544,23 @@ static void CAN1_read_buffer_32(unsigned char buffer_no, unsigned long *data){
     }
 }
 
+/******************************************************************************
+ * CAN1モジュール受信バッファフラグ設定関数（スタティック）
+ ******************************************************************************/
+static void CAN1_read_flag(unsigned char buffer_no){
+    switch (buffer_no){
+        default:
+            C1INTFbits.RX0IF    = 0;
+            C1RX0CONbits.RXFUL  = 0;
+            CAN1RX0Flag         = 0;
+            break;
+        case 1:
+            C1INTFbits.RX1IF    = 0;
+            C1RX1CONbits.RXFUL  = 0;
+            CAN1RX1Flag         = 0;
+            break;
+    }
+}
 /******************************************************************************
  * CAN1モジュール割り込み処理関数
  ******************************************************************************/
